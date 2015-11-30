@@ -607,6 +607,7 @@ bool HSsdpPrivate::init(const QHostAddress& addressToBind)
 
     Q_ASSERT(ok);
 
+	#if 1
     if (!m_multicastSocket->bind(1900))
     {
         HLOG_WARN("Failed to bind multicast socket for listening");
@@ -621,20 +622,28 @@ bool HSsdpPrivate::init(const QHostAddress& addressToBind)
 
         //return false;
     }
+	#else
+	if (!m_multicastSocket->bind(1900))
+    {
+        HLOG_WARN("Failed to bind multicast socket for listening");
+        return false;
+    }
+	m_multicastSocket->joinMulticastGroup(multicastAddress());
+	#endif
 
     HLOG_DBG(QString(
         "Attempting to use address [%1] for SSDP communications").arg(
             addressToBind.toString()));
 
     // always attempt to bind to the 1900 first
-    if (!m_unicastSocket->bind(addressToBind, 1900))
+    if (1/*!m_unicastSocket->bind(QHostAddress::Any, 1900)*/)
     {
         HLOG_DBG("Could not bind UDP unicast socket to port 1900");
 
         // the range is specified by the UDA 1.1 standard
         for(qint32 i = 49152; i < 65535; ++i)
         {
-            if (m_unicastSocket->bind(addressToBind, i))
+            if (m_unicastSocket->bind(QHostAddress::Any, i))
             {
                 HLOG_DBG(QString("Unicast UDP socket bound to port [%1].").arg(
                     QString::number(i)));
@@ -667,37 +676,41 @@ void HSsdpPrivate::messageReceived(QUdpSocket* socket, const HEndpoint* dest)
 
     QHostAddress ha; quint16 port;
 
-    QByteArray buf;
-    buf.resize(socket->pendingDatagramSize() + 1);
+	do {
+	    QByteArray buf;
+	    buf.resize(socket->pendingDatagramSize() + 1);
 
-    qint64 read = socket->readDatagram(buf.data(), buf.size(), &ha, &port);
-    if (read < 0)
-    {
-        HLOG_WARN(QString("Read failed: %1").arg(socket->errorString()));
-        Q_ASSERT(false);
-        return;
-    }
+	    qint64 read = socket->readDatagram(buf.data(), buf.size(), &ha, &port);
+	    if (read < 0)
+	    {
+	        HLOG_WARN(QString("Read failed: %1").arg(socket->errorString()));
+	        Q_ASSERT(false);
+	        return;
+	    }
 
-    QString msg(QString::fromUtf8(buf, read));
-    HEndpoint source(ha, port);
-    HEndpoint destination(
-        dest ? *dest : HEndpoint(socket->localAddress(), socket->localPort()));
+	    HLOG_DBG(QString("Read from: %1").arg(ha.toString()));
+	    QString msg(QString::fromUtf8(buf, read));
+		HLOG_DBG(QString("Read : %1").arg(msg));
+	    HEndpoint source(ha, port);
+	    HEndpoint destination(
+	        dest ? *dest : HEndpoint(socket->localAddress(), socket->localPort()));
 
-    if (msg.startsWith("NOTIFY * HTTP/1.1", Qt::CaseInsensitive))
-    {
-        // Possible presence announcement
-        processNotify(msg, source);
-    }
-    else if (msg.startsWith("M-SEARCH * HTTP/1.1", Qt::CaseInsensitive))
-    {
-        // Possible discovery request.
-        processSearch(msg, source, destination);
-    }
-    else
-    {
-        // Possible discovery response
-        processResponse(msg, source);
-    }
+	    if (msg.startsWith("NOTIFY * HTTP/1.1", Qt::CaseInsensitive))
+	    {
+	        // Possible presence announcement
+	        processNotify(msg, source);
+	    }
+	    else if (msg.startsWith("M-SEARCH * HTTP/1.1", Qt::CaseInsensitive))
+	    {
+	        // Possible discovery request.
+	        processSearch(msg, source, destination);
+	    }
+	    else
+	    {
+	        // Possible discovery response
+	        processResponse(msg, source);
+	    }
+	}while (socket->hasPendingDatagrams());
 }
 
 /*******************************************************************************
@@ -722,11 +735,13 @@ HSsdp::~HSsdp()
 
 void HSsdp::unicastMessageReceived()
 {
+	HLOG2(H_AT, H_FUN, h_ptr->m_loggingIdentifier);
     h_ptr->messageReceived(h_ptr->m_unicastSocket);
 }
 
 void HSsdp::multicastMessageReceived()
 {
+	HLOG2(H_AT, H_FUN, h_ptr->m_loggingIdentifier);
     HEndpoint ep = multicastEndpoint();
     h_ptr->messageReceived(h_ptr->m_multicastSocket, &ep);
 }

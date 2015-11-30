@@ -25,14 +25,19 @@
 #ifdef Q_OS_WIN
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#elif Q_OS_SYMBIAN || Q_OS_FREEBSD
+#elif defined(Q_OS_SYMBIAN) || defined(Q_OS_FREEBSD)
 #include <netinet/in.h>
 #include <sys/socket.h>
+#elif defined(Q_OS_ANDROID)
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 #else
 #include <arpa/inet.h>
 #endif
 
 #include <QtNetwork/QNetworkProxy>
+#include <QNetworkInterface>
 
 namespace Herqq
 {
@@ -67,13 +72,21 @@ HMulticastSocket::HMulticastSocket(
 
 bool HMulticastSocket::bind(quint16 port)
 {
-    return QUdpSocket::bind(
-        port, QUdpSocket::ReuseAddressHint | QUdpSocket::ShareAddress);
+    //return QUdpSocket::bind( port, QUdpSocket::ReuseAddressHint | QUdpSocket::ShareAddress);
+	return QUdpSocket::bind(QHostAddress::AnyIPv4, port, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint);
 }
 
 bool HMulticastSocket::joinMulticastGroup(const QHostAddress& groupAddress)
 {
-    return joinMulticastGroup(groupAddress, QHostAddress());
+	foreach (const QNetworkInterface& iface, QNetworkInterface::allInterfaces())
+    {
+        if (iface.flags() & QNetworkInterface::IsUp && (iface.flags() & QNetworkInterface::CanMulticast) &&
+                !(iface.flags() & QNetworkInterface::IsLoopBack))
+        {
+           QUdpSocket::joinMulticastGroup(groupAddress, iface);
+        }
+    }
+    //return  QUdpSocket::joinMulticastGroup(groupAddress);
 }
 
 bool HMulticastSocket::joinMulticastGroup(
@@ -109,7 +122,7 @@ bool HMulticastSocket::joinMulticastGroup(
 
     mreq.imr_multiaddr.s_addr = inet_addr(groupAddress.toString().toUtf8());
 
-    if (!localAddress.isNull())
+    if (0/*!localAddress.isNull()*/)
     {
         mreq.imr_interface.s_addr = inet_addr(localAddress.toString().toUtf8());
     }
