@@ -122,7 +122,7 @@ bool HMulticastSocket::joinMulticastGroup(
 
     mreq.imr_multiaddr.s_addr = inet_addr(groupAddress.toString().toUtf8());
 
-    if (0/*!localAddress.isNull()*/)
+    if (!localAddress.isNull())
     {
         mreq.imr_interface.s_addr = inet_addr(localAddress.toString().toUtf8());
     }

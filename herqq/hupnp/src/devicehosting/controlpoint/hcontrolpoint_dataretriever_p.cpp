@@ -39,6 +39,7 @@ HDataRetriever::HDataRetriever(const QByteArray& loggingId) :
     m_loggingIdentifier(loggingId), m_nam(), m_reply(0), m_lastError(),
     m_success(false)
 {
+	HLOG2(H_AT, H_FUN, m_loggingIdentifier);
     bool ok = connect(
         &m_nam, SIGNAL(finished(QNetworkReply*)), this, SLOT(finished()));
     Q_ASSERT(ok); Q_UNUSED(ok)

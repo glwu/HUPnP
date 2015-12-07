@@ -38,8 +38,8 @@ else {
     LIBS += -lQtSolutions_SOAP-2.7
     !macx:QMAKE_LFLAGS += -Wl,--rpath=\\\$\$ORIGIN
 
-    QMAKE_POST_LINK += cp -Rf $$PWD/descriptions bin &
-    QMAKE_POST_LINK += cp -Rf ../../hupnp/bin/* bin
+    QMAKE_POST_LINK += $(COPY_DIR) $$PWD/descriptions bin &
+    QMAKE_POST_LINK += $(COPY_DIR) ../../hupnp/bin/* bin
 }
 
 macx {

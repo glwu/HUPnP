@@ -446,7 +446,7 @@ bool HSsdpPrivate::send(const QByteArray& data, const HEndpoint& receiver)
     if (!port) { port = 1900; }
 
     qint64 retVal = m_unicastSocket->writeDatagram(
-        data, receiver.hostAddress(), port);
+        data, data.size(), receiver.hostAddress(), port);
 
     return retVal == data.size();
 }
@@ -607,7 +607,7 @@ bool HSsdpPrivate::init(const QHostAddress& addressToBind)
 
     Q_ASSERT(ok);
 
-	#if 1
+	#if 0
     if (!m_multicastSocket->bind(1900))
     {
         HLOG_WARN("Failed to bind multicast socket for listening");
@@ -638,7 +638,7 @@ bool HSsdpPrivate::init(const QHostAddress& addressToBind)
     // always attempt to bind to the 1900 first
     if (1/*!m_unicastSocket->bind(QHostAddress::Any, 1900)*/)
     {
-        HLOG_DBG("Could not bind UDP unicast socket to port 1900");
+        //HLOG_DBG("Could not bind UDP unicast socket to port 1900");
 
         // the range is specified by the UDA 1.1 standard
         for(qint32 i = 49152; i < 65535; ++i)
@@ -678,7 +678,7 @@ void HSsdpPrivate::messageReceived(QUdpSocket* socket, const HEndpoint* dest)
 
 	do {
 	    QByteArray buf;
-	    buf.resize(socket->pendingDatagramSize() + 1);
+	    buf.resize(socket->pendingDatagramSize());
 
 	    qint64 read = socket->readDatagram(buf.data(), buf.size(), &ha, &port);
 	    if (read < 0)
@@ -691,6 +691,20 @@ void HSsdpPrivate::messageReceived(QUdpSocket* socket, const HEndpoint* dest)
 	    HLOG_DBG(QString("Read from: %1").arg(ha.toString()));
 	    QString msg(QString::fromUtf8(buf, read));
 		HLOG_DBG(QString("Read : %1").arg(msg));
+		if (ha.toString().startsWith("::ffff:")) {
+			QString addr = ha.toString();
+			ha.setAddress(addr.remove("::ffff:"));
+		}
+		if (!ha.isInSubnet(findBindableHostAddress(), 24)) {
+			HLOG_DBG(QString("continue"));
+			continue;
+		}
+		#if 1
+		if ( (ha.toString() == findBindableHostAddress().toString())) {
+			HLOG_DBG(QString("continue"));
+			continue;
+		}
+		#endif
 	    HEndpoint source(ha, port);
 	    HEndpoint destination(
 	        dest ? *dest : HEndpoint(socket->localAddress(), socket->localPort()));

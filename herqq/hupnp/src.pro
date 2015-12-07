@@ -62,7 +62,7 @@ include (src/devicehosting/devicehosting.pri)
         QMAKE_POST_LINK += copy lib\\qtsoap-2.7-opensource\\lib\\* bin /Y
     }
     else {
-        QMAKE_POST_LINK += cp -fR ./lib/qtsoap-2.7-opensource/lib/* ./bin/
+        QMAKE_POST_LINK += $(COPY) ./lib/qtsoap-2.7-opensource/lib/* ./bin/
     }
 }
 
