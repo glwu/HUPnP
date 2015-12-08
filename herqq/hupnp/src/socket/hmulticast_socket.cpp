@@ -149,6 +149,82 @@ bool HMulticastSocket::joinMulticastGroup(
     return true;
 }
 
+
+bool HMulticastSocket::joinMulticastGroup(const QHostAddress& groupAddress, quint16 port)
+{
+    HLOG(H_AT, H_FUN);
+
+    if (groupAddress.protocol() != QAbstractSocket::IPv4Protocol)
+    {
+        // TODO: IPv6 multicast
+        HLOG_WARN("IPv6 is not supported.");
+        setSocketError(QAbstractSocket::UnknownSocketError);
+        return false;
+    }
+
+    if (proxy().type() != QNetworkProxy::NoProxy)
+    {
+        // TODO: Proxied multicast
+        HLOG_WARN("Proxied multicast is not supported.");
+        setSocketError(QAbstractSocket::UnknownSocketError);
+        return false;
+    }
+
+    if (socketDescriptor() == -1)
+    {
+		int socketid;
+
+        #ifdef Q_OS_WIN
+        WSAData ws;
+        if (WSAStartup(MAKEWORD(2,2),&ws))
+        {
+			HLOG_WARN("WSAStartup failed.");
+			return false;
+        }
+        #endif
+
+        if ((socketid = socket (AF_INET, SOCK_DGRAM, 0)) < 0)
+        {
+            HLOG_WARN("Socket descriptor is invalid.");
+			setSocketError(QAbstractSocket::UnknownSocketError);
+            return false;
+        }
+        setSocketDescriptor(socketid);
+    }
+
+    struct ip_mreq mreq;
+    sockaddr_in m_sockLocalAddress;
+    sockaddr_in m_sockReceiveAddress;
+    memset(&mreq, 0, sizeof(ip_mreq));
+
+	m_sockLocalAddress.sin_family = AF_INET;
+    m_sockLocalAddress.sin_port = htons(port);
+    m_sockLocalAddress.sin_addr.s_addr = htonl(INADDR_ANY);
+    if (::bind (socketDescriptor(),
+        (struct sockaddr *) &m_sockLocalAddress,
+        sizeof (m_sockLocalAddress)) == -1)
+    {
+		HLOG_WARN("Binding socket failed!");
+        return false;
+    }
+
+    mreq.imr_multiaddr.s_addr = inet_addr(groupAddress.toString().toUtf8());
+    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+
+    if (setsockopt(socketDescriptor(),
+        IPPROTO_IP,
+        IP_ADD_MEMBERSHIP,
+        reinterpret_cast<char*>(&mreq),
+        sizeof (mreq)) == -1)
+    {
+		HLOG_WARN("setsockopt failed!");
+        return false;
+    }
+
+    return true;
+}
+
+
 bool HMulticastSocket::leaveMulticastGroup(const QHostAddress& groupAddress)
 {
     return leaveMulticastGroup(groupAddress, QHostAddress());

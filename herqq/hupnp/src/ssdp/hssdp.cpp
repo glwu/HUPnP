@@ -623,12 +623,7 @@ bool HSsdpPrivate::init(const QHostAddress& addressToBind)
         //return false;
     }
 	#else
-	if (!m_multicastSocket->bind(1900))
-    {
-        HLOG_WARN("Failed to bind multicast socket for listening");
-        return false;
-    }
-	m_multicastSocket->joinMulticastGroup(multicastAddress());
+	m_multicastSocket->joinMulticastGroup(multicastAddress(), 1900);
 	#endif
 
     HLOG_DBG(QString(
@@ -643,7 +638,7 @@ bool HSsdpPrivate::init(const QHostAddress& addressToBind)
         // the range is specified by the UDA 1.1 standard
         for(qint32 i = 49152; i < 65535; ++i)
         {
-            if (m_unicastSocket->bind(QHostAddress::Any, i))
+            if (m_unicastSocket->bind(addressToBind, i))
             {
                 HLOG_DBG(QString("Unicast UDP socket bound to port [%1].").arg(
                     QString::number(i)));

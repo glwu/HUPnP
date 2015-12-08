@@ -78,6 +78,7 @@ public:
      * this happens when the socket is not bound to a port.
      */
     bool joinMulticastGroup(const QHostAddress& groupAddress);
+    bool joinMulticastGroup(const QHostAddress& groupAddress, quint16 port);
 
     /*!
      * Attempts to joins into the specified multicast group address using
