@@ -25,10 +25,10 @@ LIBS += -L"./bin/"
 debug:DEFINES += DEBUG
 
 win32 {
-    debug {
+    CONFIG(debug, debug|release) {
         LIBS += -lQtSolutions_SOAP-2.7d
     }
-    else {
+    CONFIG(release, debug|release) {
         LIBS += -lQtSolutions_SOAP-2.7
     }
 
